@@ -1,4 +1,4 @@
-name: Simple Python CI
+name: CI-CD Python Flask App
 
 on:
   push:
@@ -27,6 +27,29 @@ jobs:
         run: |
           python -m py_compile app.py
 
-      - name: Run app (demo)
+      - name: CI Status
         run: |
-          echo "✅ CI pipeline passed. Flask app is ready to run."
+          echo "✅ CI pipeline passed. Ready to deploy."
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            cd /home/ec2-user/flask_dockerize
+            git pull origin main
+            source venv/bin/activate
+            pip install -r requirements.txt
+            sudo systemctl restart flaskapp
+            echo "✅ Deployment completed on EC2"
