@@ -39,7 +39,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Deploy to EC2 via SSH
+      - name: Copy latest code to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          source: "./"
+          target: "/home/ec2-user/flask_dockerize/"
+
+      - name: Deploy on EC2
         uses: appleboy/ssh-action@v1.1.0
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -48,8 +58,17 @@ jobs:
           port: 22
           script: |
             cd /home/ec2-user/flask_dockerize
-            git pull origin main
+            
+            # Create venv if not exists and activate it
+            if [ ! -d "venv" ]; then
+              python3 -m venv venv
+            fi
             source venv/bin/activate
+
+            # Install dependencies
             pip install -r requirements.txt
+
+            # Restart service
             sudo systemctl restart flaskapp
-            echo "✅ Deployment completed on EC2"
+
+            echo "✅ Code copied, dependencies updated, service restarted successfully!"
